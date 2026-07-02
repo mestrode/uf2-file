@@ -1,5 +1,3 @@
-#![cfg_attr(not(test), no_std)]
-
 use core::fmt;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
