@@ -84,10 +84,11 @@ fn bin_to_uf2(
     let mut offset = 0;
 
     binary.chunks(256).enumerate().for_each(|(index, chunk)| {
-        let mut block = Block::default();
-
-        block.data_len = chunk.len() as u32;
-        block.target_addr = target_addr + offset;
+        let mut block = Block {
+            data_len: chunk.len() as u32,
+            target_addr: target_addr + offset,
+            ..Default::default()
+        };
 
         if let Some(family_id) = family_id {
             block.board_family_id_or_file_size = family_id;
@@ -100,7 +101,7 @@ fn bin_to_uf2(
         block.data[0..chunk.len()].copy_from_slice(chunk);
         offset += block.data_len;
 
-        output_file.write(block.as_bytes()).unwrap();
+        let _ = output_file.write(block.as_bytes()).unwrap();
     });
 
     println!(
@@ -141,7 +142,7 @@ fn uf2_to_bin(input: PathBuf, output: PathBuf) -> anyhow::Result<()> {
         total_blocks += 1;
     }
 
-    output_file.write(&binary)?;
+    let _ = output_file.write(&binary)?;
 
     println!("Read {} bytes from {} blocks.", binary.len(), total_blocks);
 
