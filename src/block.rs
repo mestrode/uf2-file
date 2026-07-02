@@ -480,4 +480,155 @@ mod tests {
         assert_eq!(block.total_blocks, 1438);
         assert_eq!(block.board_family_id_or_file_size, 0);
     }
+
+    #[test]
+    fn test_block_new() {
+        // Test basic block creation
+        let data = [0xAA; 256];
+        let block = Block::new(0, 1, &data, 0x08000000);
+
+        // Check magic numbers
+        assert_eq!(block.magic_start_0, MAGIC_NUMBER[0]);
+        assert_eq!(block.magic_start_1, MAGIC_NUMBER[1]);
+        assert_eq!(block.magic_end, MAGIC_NUMBER[2]);
+
+        // Check metadata
+        assert_eq!(block.block, 0);
+        assert_eq!(block.total_blocks, 1);
+        assert_eq!(block.target_addr, 0x08000000);
+        assert_eq!(block.data_len, 256);
+
+        // Check data
+        assert_eq!(block.data(), &data);
+    }
+
+    #[test]
+    fn test_block_new_multiple_blocks() {
+        // Test with multiple blocks
+        let data = [0xBB; 100];
+        let block = Block::new(2, 5, &data, 0x08000100);
+
+        assert_eq!(block.block, 2);
+        assert_eq!(block.total_blocks, 5);
+        assert_eq!(block.target_addr, 0x08000100);
+        assert_eq!(block.data_len, 100);
+        assert_eq!(block.data(), &data);
+    }
+
+    #[test]
+    fn test_block_new_empty_data() {
+        // Test with empty data
+        let data: &[u8] = &[];
+        let block = Block::new(0, 1, data, 0);
+
+        assert_eq!(block.data_len, 0);
+        assert_eq!(block.data(), &[]);
+    }
+
+    #[test]
+    fn test_block_new_max_payload() {
+        // Test with maximum payload size
+        let data = [0xCC; MAX_PAYLOAD_SIZE];
+        let block = Block::new(0, 1, &data, 0);
+
+        assert_eq!(block.data_len, MAX_PAYLOAD_SIZE as u32);
+        assert_eq!(block.data(), &data);
+    }
+
+    #[test]
+    #[should_panic(expected = "block <= total_blocks")]
+    fn test_block_new_panics_on_invalid_index() {
+        // Block index cannot exceed total blocks
+        let data = [0xDD; 100];
+        Block::new(5, 3, &data, 0); // block=5 > total_blocks=3
+    }
+
+    #[test]
+    fn test_set_checksum() {
+        let mut block = Block::default();
+
+        // Initially no checksum
+        assert_eq!(block.has_checksum(), false);
+        assert!(block.checksum().is_none());
+
+        // Set a checksum
+        let checksum = Checksum {
+            start: 0x08000000,
+            length: 256,
+            checksum: [0xAB; 16],
+        };
+        block.set_checksum(checksum);
+
+        // Verify checksum is set
+        assert_eq!(block.has_checksum(), false); // Flag not set automatically
+
+        // Set the checksum flag
+        block.flags |= Flags::Checksum;
+        assert_eq!(block.has_checksum(), true);
+
+        // Verify we can retrieve the checksum
+        let retrieved = block.checksum().unwrap();
+        assert_eq!(retrieved.start, 0x08000000);
+        assert_eq!(retrieved.length, 256);
+        assert_eq!(retrieved.checksum, [0xAB; 16]);
+    }
+
+    #[test]
+    fn test_board_family_id() {
+        let mut block = Block::default();
+
+        // Initially no family ID
+        assert_eq!(block.board_family_id(), None);
+
+        // Set family ID flag and value
+        block.flags |= Flags::FamilyId;
+        block.board_family_id_or_file_size = 0x12345678;
+
+        // Verify we can retrieve the family ID
+        assert_eq!(block.board_family_id(), Some(0x12345678));
+
+        // Test with different family ID
+        block.board_family_id_or_file_size = 0x87654321;
+        assert_eq!(block.board_family_id(), Some(0x87654321));
+    }
+
+    #[test]
+    fn test_file_size() {
+        let mut block = Block::default();
+
+        // Initially no file size (FamilyId flag not set)
+        assert_eq!(block.file_size(), Some(0));
+
+        // Set a file size
+        block.board_family_id_or_file_size = 1024;
+        assert_eq!(block.file_size(), Some(1024));
+
+        // Set FamilyId flag - now file_size should return None
+        block.flags |= Flags::FamilyId;
+        assert_eq!(block.file_size(), None);
+
+        // Clear FamilyId flag - file_size should return the value again
+        block.flags &= !Flags::FamilyId;
+        assert_eq!(block.file_size(), Some(1024));
+    }
+
+    #[test]
+    fn test_board_family_id_vs_file_size() {
+        let mut block = Block::default();
+
+        // Set both flags and value
+        block.board_family_id_or_file_size = 0xCAFEBABE;
+
+        // Without FamilyId flag, it's a file size
+        assert_eq!(block.file_size(), Some(0xCAFEBABE));
+        assert_eq!(block.board_family_id(), None);
+
+        // With FamilyId flag, it's a family ID
+        block.flags |= Flags::FamilyId;
+        assert_eq!(block.board_family_id(), Some(0xCAFEBABE));
+        assert_eq!(block.file_size(), None);
+
+        // The same underlying value, but different interpretation based on flag
+        assert_eq!(block.board_family_id_or_file_size, 0xCAFEBABE);
+    }
 }
