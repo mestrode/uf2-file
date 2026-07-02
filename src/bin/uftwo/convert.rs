@@ -7,7 +7,7 @@ use std::{
     io::{Read, Write},
     path::PathBuf,
 };
-use uftwo::{Block, BLOCK_SIZE, Flags};
+use uftwo::{Block, Flags, BLOCK_SIZE};
 use zerocopy::IntoBytes;
 
 #[derive(Parser)]
