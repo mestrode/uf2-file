@@ -87,7 +87,7 @@ fn bin_to_uf2(
         let mut block = Block::default();
 
         block.data_len = chunk.len() as u32;
-        block.target_addr = (target_addr + offset) as u32;
+        block.target_addr = target_addr + offset;
 
         if let Some(family_id) = family_id {
             block.board_family_id_or_file_size = family_id;
