@@ -1,8 +1,7 @@
 #![cfg_attr(not(test), no_std)]
 
 pub mod block;
+pub mod uf2file;
 
-pub use block::{
-    BLOCK_SIZE, Checksum, Extension, ExtensionTag, Extensions, Flags,
-    MAX_PAYLOAD_SIZE, MAGIC_NUMBER, Block, BlockError,
-};
+pub use block::*;
+pub use uf2file::Uf2File;
