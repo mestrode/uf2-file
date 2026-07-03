@@ -414,4 +414,61 @@ mod tests {
             ReaderError::BlockCorruption(BlockError::PayloadSize)
         ));
     }
+
+    #[test]
+    fn test_with_actual_uf2_files() {
+        // Test with the actual UF2 test files
+        let test_files = [
+            "tests/simple_256.uf2",
+            "tests/simple_512.uf2",
+            "tests/simple_1024.uf2",
+            "tests/family_id.uf2",
+            "tests/family_id_2.uf2",
+            "tests/checksum_256.uf2",
+            "tests/checksum_512.uf2",
+            "tests/extensions.uf2",
+            "tests/extensions_512.uf2",
+            "tests/full_spec.uf2",
+            "tests/minimal.uf2",
+            "tests/max_payload.uf2",
+        ];
+
+        for file_path in test_files {
+            let path = std::path::Path::new(file_path);
+            if path.exists() {
+                // Test is_uf2_file
+                assert!(
+                    crate::reader::is_uf2_buffer(&std::fs::read(path).unwrap()),
+                    "is_uf2_buffer failed for {}",
+                    file_path
+                );
+
+                // Test from_bytes
+                let bytes = std::fs::read(path).unwrap();
+                let uf2_file = from_bytes(&bytes).unwrap();
+                assert!(uf2_file.len() > 0, "No blocks in {}", file_path);
+
+                // Test verify
+                assert!(
+                    verify(&uf2_file).is_ok(),
+                    "Verify failed for {}",
+                    file_path
+                );
+
+                // Test get_payload
+                let payload = uf2_file.get_payload(None);
+                assert!(payload.is_some(), "No payload in {}", file_path);
+
+                // Test roundtrip
+                let bytes_roundtrip = uf2_file.to_bytes();
+                let uf2_file_restored = from_bytes(&bytes_roundtrip).unwrap();
+                assert_eq!(
+                    uf2_file.len(),
+                    uf2_file_restored.len(),
+                    "Roundtrip failed for {}",
+                    file_path
+                );
+            }
+        }
+    }
 }
