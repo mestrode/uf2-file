@@ -252,7 +252,7 @@ impl Uf2File {
                 );
 
                 // Validate 4-byte alignment of target address (UF2 spec requirement)
-                if block.target_addr % 4 != 0 {
+                if !block.target_addr.is_multiple_of(ALIGN as u32) {
                     return Err(WriterError::AlignmentError);
                 }
 
