@@ -128,6 +128,7 @@ impl Block {
 
         // copy over data
         assert!(data.len() <= this.data.len());
+        this.data_len = data.len() as u32;
         this.data[0..data.len()].copy_from_slice(data);
 
         this
