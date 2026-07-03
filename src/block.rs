@@ -7,6 +7,19 @@ pub const BLOCK_SIZE: usize = 512;
 /// Maximum payload size in a UF2 block.
 pub const MAX_PAYLOAD_SIZE: usize = 476;
 
+/// Size of checksum placed within payload
+const CHECKSUM_SIZE: usize = 24;
+
+/// Maximum payload size when checksum is included (476 - 24 = 452).
+pub const MAX_PAYLOAD_SIZE_WITH_CHECKSUM: usize =
+    MAX_PAYLOAD_SIZE - CHECKSUM_SIZE;
+
+/// Padding byte used in UF2 blocks.
+pub const PADDING_BYTE: u8 = 0xFF;
+
+/// Align to 4 byte boundary.
+pub const ALIGN: usize = 4;
+
 /// Magic numbers.
 pub const MAGIC_NUMBER: [u32; 3] = [0x0A324655, 0x9E5D5157, 0x0AB16F30];
 
@@ -152,7 +165,7 @@ impl Block {
     pub fn checksum(&self) -> Option<&Checksum> {
         if self.has_checksum() {
             let len = self.data.len();
-            Checksum::ref_from_bytes(&self.data[len - 24..len]).ok()
+            Checksum::ref_from_bytes(&self.data[len - CHECKSUM_SIZE..len]).ok()
         } else {
             None
         }
@@ -222,7 +235,7 @@ pub struct Checksum {
 
 const _: () = {
     // Ensure Checksum is correct size.
-    assert!(core::mem::size_of::<Checksum>() == 24);
+    assert!(core::mem::size_of::<Checksum>() == CHECKSUM_SIZE);
 };
 
 /// Block flags.
