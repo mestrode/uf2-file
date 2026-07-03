@@ -7,8 +7,7 @@ use std::{
     io::{Read, Write},
     path::PathBuf,
 };
-use uftwo::{Block, Flags, BLOCK_SIZE};
-use zerocopy::IntoBytes;
+use uftwo::{reader, Uf2File};
 
 #[derive(Parser)]
 pub struct Cmd {
@@ -79,35 +78,16 @@ fn bin_to_uf2(
     let mut binary = Vec::new();
     input_file.read_to_end(&mut binary)?;
 
-    let total_blocks = binary.chunks(256).count();
+    let mut uf2_file = Uf2File::new();
+    uf2_file.add_payload(&binary, family_id)?;
+    uf2_file.set_target_addresses(target_addr);
 
-    let mut offset = 0;
-
-    binary.chunks(256).enumerate().for_each(|(index, chunk)| {
-        let mut block = Block {
-            data_len: chunk.len() as u32,
-            target_addr: target_addr + offset,
-            ..Default::default()
-        };
-
-        if let Some(family_id) = family_id {
-            block.board_family_id_or_file_size = family_id;
-            block.flags |= Flags::FamilyId;
-        }
-
-        block.block = index as u32;
-        block.total_blocks = total_blocks as u32;
-
-        block.data[0..chunk.len()].copy_from_slice(chunk);
-        offset += block.data_len;
-
-        let _ = output_file.write(block.as_bytes()).unwrap();
-    });
+    uf2_file.to_writer(&mut output_file)?;
 
     println!(
         "Written {} bytes into {} blocks.",
         binary.len(),
-        total_blocks
+        uf2_file.len()
     );
 
     output_file.flush()?;
@@ -117,34 +97,21 @@ fn bin_to_uf2(
 
 /// UF2 to binary.
 fn uf2_to_bin(input: PathBuf, output: PathBuf) -> anyhow::Result<()> {
-    let mut input_file = File::open(input)?;
     let mut output_file = File::create(output)?;
 
-    let mut binary: Vec<u8> = vec![];
+    let uf2_file = reader::from_bytes(&std::fs::read(&input)?)?;
 
-    println!("Reading blocks.");
+    let payload = uf2_file
+        .get_payload(None)
+        .ok_or_else(|| Error::msg("No payload found"))?;
 
-    let mut total_blocks = 0;
+    output_file.write_all(&payload)?;
 
-    loop {
-        let mut buf = [0; BLOCK_SIZE];
-
-        let bytes = input_file.read(&mut buf)?;
-
-        if bytes < BLOCK_SIZE {
-            break;
-        }
-
-        let block = Block::from_bytes(&buf).map_err(Error::msg)?;
-
-        binary.extend(block.data());
-
-        total_blocks += 1;
-    }
-
-    let _ = output_file.write(&binary)?;
-
-    println!("Read {} bytes from {} blocks.", binary.len(), total_blocks);
+    println!(
+        "Read {} bytes from {} blocks.",
+        payload.len(),
+        uf2_file.len()
+    );
 
     output_file.flush()?;
 
