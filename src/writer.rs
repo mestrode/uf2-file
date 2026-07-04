@@ -37,6 +37,9 @@ impl fmt::Display for WriterError {
     }
 }
 
+#[cfg(feature = "std")]
+impl std::error::Error for WriterError {}
+
 impl Uf2File {
     /// Add payload to the UF2 file.
     ///
