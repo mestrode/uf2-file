@@ -248,8 +248,8 @@ impl Block {
 
         // If there are existing extensions, find the end of the last one
         if self.has_extensions() {
-            let mut existing_extensions = self.extensions().unwrap();
-            while let Some(ext) = existing_extensions.next() {
+            let existing_extensions = self.extensions().unwrap();
+            for ext in existing_extensions {
                 // Move to the end of this extension
                 // The extension's total length is stored in the first byte
                 let ext_total_len = Extensions::HEADER_SIZE + ext.data.len();
