@@ -45,11 +45,7 @@ impl fmt::Display for BlockError {
     }
 }
 
-#[cfg(feature = "std")]
-extern crate std;
-
-#[cfg(feature = "std")]
-impl std::error::Error for BlockError {}
+impl core::error::Error for BlockError {}
 
 /// Block structure.
 ///
