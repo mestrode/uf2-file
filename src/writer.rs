@@ -3,22 +3,16 @@
 //! This module provides APIs for creating and writing UF2 files to streams.
 //! It requires the `std` feature for I/O traits and MD5 checksums.
 
+#[cfg(feature = "std")]
 extern crate std;
 
-use std::cmp;
-use std::fmt;
-use std::io::Write;
-use std::path::Path;
-use std::string::ToString;
-
-use zerocopy::IntoBytes;
+use core::fmt;
 
 use crate::block::{
-    Block, Checksum, Extension, ExtensionTag, Flags, MAX_PAYLOAD_SIZE,
-    MAX_PAYLOAD_SIZE_WITH_CHECKSUM,
+    Block, Flags, MAX_PAYLOAD_SIZE, MAX_PAYLOAD_SIZE_WITH_CHECKSUM,
 };
 use crate::uf2file::Uf2File;
-use crate::{ALIGN, MAGIC_NUMBER};
+use crate::MAGIC_NUMBER;
 
 /// Error type for UF2 writing operations.
 #[derive(Debug, PartialEq, Eq)]
@@ -67,7 +61,8 @@ impl Uf2File {
             payload.len().div_ceil(MAX_PAYLOAD_SIZE_WITH_CHECKSUM);
 
         while offset < payload.len() {
-            let chunk_size = cmp::min(MAX_PAYLOAD_SIZE, payload.len() - offset);
+            let chunk_size =
+                core::cmp::min(MAX_PAYLOAD_SIZE, payload.len() - offset);
 
             // Validate 4-byte alignment of offset (target address)
             if !offset.is_multiple_of(4) {
@@ -116,7 +111,16 @@ impl Uf2File {
     ///
     /// # Errors
     /// Returns `std::io::Error` if writing fails.
-    pub fn to_writer<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
+    /// Write the UF2 file to a writer.
+    ///
+    /// # Errors
+    /// Returns `std::io::Error` if writing fails.
+    #[cfg(feature = "std")]
+    pub fn to_writer<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+    ) -> std::io::Result<()> {
+        use zerocopy::IntoBytes;
         for block in self.blocks() {
             writer.write_all(block.as_bytes())?;
         }
@@ -127,7 +131,8 @@ impl Uf2File {
     ///
     /// # Errors
     /// Returns `WriterError::InputBuffer` if the file cannot be written.
-    pub fn to_file(&self, path: &Path) -> Result<(), WriterError> {
+    #[cfg(feature = "std")]
+    pub fn to_file(&self, path: &std::path::Path) -> Result<(), WriterError> {
         let bytes = self.to_bytes();
         std::fs::write(path, &bytes).map_err(|_| WriterError::InputBuffer)
     }
@@ -146,6 +151,7 @@ impl Uf2File {
     ///
     /// # Errors
     /// - [`WriterError::AlignmentError`] if target_addr or page_size are not properly aligned.
+    #[cfg(feature = "std")]
     pub fn add_binary(
         &mut self,
         binary: &[u8],
@@ -154,8 +160,13 @@ impl Uf2File {
         page_size: usize,
         semver: &str,
     ) -> Result<(), WriterError> {
+        use crate::block::{Checksum, Extension, ExtensionTag};
+        use crate::ALIGN;
+        use std::cmp;
+        use std::string::ToString;
+        use zerocopy::IntoBytes;
         // Validate that target_addr is 4-byte aligned
-        if !target_addr.is_multiple_of(4) {
+        if !target_addr.is_multiple_of(ALIGN as u32) {
             return Err(WriterError::AlignmentError);
         }
 
@@ -330,7 +341,7 @@ impl Uf2File {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
     use crate::block::MAX_PAYLOAD_SIZE;
