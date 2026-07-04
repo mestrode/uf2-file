@@ -177,7 +177,9 @@ impl Block {
         let begin = self.data.len() - size_of::<Checksum>();
         let end = self.data.len();
 
-        self.data[begin..end].copy_from_slice(checksum.as_bytes())
+        self.data[begin..end].copy_from_slice(checksum.as_bytes());
+
+        self.flags |= Flags::Checksum;
     }
 
     /// Returns `true` if the extensions flag is set.
@@ -561,10 +563,6 @@ mod tests {
         block.set_checksum(checksum);
 
         // Verify checksum is set
-        assert_eq!(block.has_checksum(), false); // Flag not set automatically
-
-        // Set the checksum flag
-        block.flags |= Flags::Checksum;
         assert_eq!(block.has_checksum(), true);
 
         // Verify we can retrieve the checksum
