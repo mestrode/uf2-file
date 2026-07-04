@@ -33,6 +33,8 @@ pub enum BlockError {
     MagicNumber,
     /// Payload size too large.
     PayloadSize,
+    /// Block number invalid, e.g. exceeds total blocks count.
+    BlockNumberInvalid,
 }
 
 impl fmt::Display for BlockError {
@@ -41,6 +43,7 @@ impl fmt::Display for BlockError {
             Self::InputBuffer => write!(f, "Input buffer"),
             Self::MagicNumber => write!(f, "Magic number incorrect"),
             Self::PayloadSize => write!(f, "Payload size too large"),
+            Self::BlockNumberInvalid => write!(f, "Block number invalid"),
         }
     }
 }
@@ -148,6 +151,11 @@ impl Block {
 
         if block.data_len > MAX_PAYLOAD_SIZE as u32 {
             return Err(BlockError::PayloadSize);
+        }
+
+        // Validate block number is less than total blocks (UF2 spec requirement)
+        if block.block >= block.total_blocks {
+            return Err(BlockError::BlockNumberInvalid);
         }
 
         Ok(*block)
@@ -607,6 +615,22 @@ mod tests {
         // Block index cannot exceed total blocks
         let data = [0xDD; 100];
         Block::new(5, 3, &data, 0); // block=5 > total_blocks=3
+    }
+
+    #[test]
+    fn test_from_bytes_block_number_exceeds_total() {
+        // Create a block with block >= total_blocks
+        let mut block = Block::default();
+        block.block = 5; // block number 5
+        block.total_blocks = 3; // but only 3 total blocks
+        let bytes = block.as_bytes();
+
+        let result = Block::from_bytes(&bytes);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            BlockError::BlockNumberInvalid
+        ));
     }
 
     #[test]
