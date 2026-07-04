@@ -18,9 +18,11 @@ impl Uf2File {
         Self { blocks: Vec::new() }
     }
 
-    /// Create a UF2 file from a vector of blocks.
-    pub fn from_blocks(blocks: Vec<Block>) -> Self {
-        Self { blocks }
+    /// Create a UF2 file from a slice of blocks.
+    pub fn from_blocks(blocks: &[Block]) -> Self {
+        Self {
+            blocks: blocks.to_vec(),
+        }
     }
 
     /// Get the number of blocks in the UF2 file.
@@ -132,7 +134,7 @@ mod tests {
         let block2 = Block::default();
         let blocks = vec![block1, block2];
 
-        let uf2_file = Uf2File::from_blocks(blocks);
+        let uf2_file = Uf2File::from_blocks(&blocks);
         assert_eq!(uf2_file.len(), 2);
         assert!(!uf2_file.is_empty());
         assert_eq!(uf2_file.blocks().len(), 2);

@@ -87,7 +87,7 @@ pub fn from_bytes(buf: &[u8]) -> Result<Uf2File, ReaderError> {
         blocks.push(block);
     }
 
-    Ok(Uf2File::from_blocks(blocks))
+    Ok(Uf2File::from_blocks(&blocks))
 }
 
 /// Verify the integrity of the UF2 file.
