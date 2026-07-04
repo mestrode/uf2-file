@@ -219,6 +219,73 @@ impl Block {
             true => None,
         }
     }
+
+    /// Add an extension to this block.
+    ///
+    /// Extensions are stored after the payload data in the block's data array.
+    /// Each extension consists of a 1-byte length field, a 3-byte tag, and the data.
+    ///
+    /// # Arguments
+    /// * `tag` - The extension tag identifying the type of extension
+    /// * `data` - The extension data bytes
+    ///
+    /// # Returns
+    /// * `Ok(())` if the extension was added successfully
+    /// * `Err(BlockError::PayloadSize)` if there's not enough space for the extension
+    ///
+    /// # Example
+    /// ```
+    /// use uftwo::block::{Block, ExtensionTag};
+    ///
+    /// let mut block = Block::new(0, 1, &[0xAA; 100], 0x08000000);
+    /// block.add_extension(ExtensionTag::SemverString, b"1.0.0").unwrap();
+    /// assert!(block.has_extensions());
+    /// ```
+    pub fn add_extension(
+        &mut self,
+        tag: ExtensionTag,
+        data: &[u8],
+    ) -> Result<(), BlockError> {
+        // Find the end of existing extensions or start after payload
+        let mut ext_start = self.data_len as usize;
+        ext_start = ext_start.next_multiple_of(Extensions::ALIGN);
+
+        // If there are existing extensions, find the end of the last one
+        if self.has_extensions() {
+            let mut existing_extensions = self.extensions().unwrap();
+            while let Some(ext) = existing_extensions.next() {
+                // Move to the end of this extension
+                // The extension's total length is stored in the first byte
+                let ext_total_len = Extensions::HEADER_SIZE + ext.data.len();
+                ext_start += ext_total_len.next_multiple_of(Extensions::ALIGN);
+            }
+        }
+
+        // Calculate space needed for this extension
+        let ext_len = Extensions::HEADER_SIZE + data.len();
+        let ext_end = ext_start + ext_len;
+
+        // Check if there's enough space in the block's data array
+        if ext_end > self.data.len() {
+            return Err(BlockError::PayloadSize);
+        }
+
+        // Write extension length (1 byte)
+        self.data[ext_start] = ext_len as u8;
+
+        // Write extension tag (3 bytes)
+        let tag_bytes = tag.to_bytes();
+        self.data[ext_start + 1..ext_start + 4].copy_from_slice(&tag_bytes);
+
+        // Write extension data
+        self.data[ext_start + Extensions::HEADER_SIZE..ext_end]
+            .copy_from_slice(data);
+
+        // Set the extension flag
+        self.flags |= Flags::ExtensionTags;
+
+        Ok(())
+    }
 }
 
 /// Checksum information.
@@ -629,5 +696,67 @@ mod tests {
 
         // The same underlying value, but different interpretation based on flag
         assert_eq!(block.board_family_id_or_file_size, 0xCAFEBABE);
+    }
+
+    #[test]
+    fn test_add_extension() {
+        let mut block = Block::new(0, 1, &[0xAA; 100], 0x08000000);
+
+        // Initially no extensions
+        assert_eq!(block.has_extensions(), false);
+
+        // Add a semver extension
+        let result = block.add_extension(ExtensionTag::SemverString, b"1.0.0");
+        assert!(result.is_ok());
+        assert_eq!(block.has_extensions(), true);
+
+        // Verify we can retrieve the extension
+        let mut extensions = block.extensions().unwrap();
+        let ext = extensions.next().unwrap();
+        assert_eq!(ext.tag, ExtensionTag::SemverString);
+        assert_eq!(ext.data, b"1.0.0");
+    }
+
+    #[test]
+    fn test_add_extension_multiple() {
+        let mut block = Block::new(0, 1, &[0xBB; 50], 0x08000000);
+
+        // Add first extension
+        block
+            .add_extension(ExtensionTag::SemverString, b"1.0.0")
+            .unwrap();
+
+        // Verify first extension is present
+        let mut extensions = block.extensions().unwrap();
+        let ext1 = extensions.next().unwrap();
+        assert_eq!(ext1.tag, ExtensionTag::SemverString);
+        assert_eq!(ext1.data, b"1.0.0");
+
+        // Add second extension
+        block
+            .add_extension(ExtensionTag::DescriptionString, b"Test")
+            .unwrap();
+
+        // Verify both extensions are present
+        let mut extensions = block.extensions().unwrap();
+        let ext1 = extensions.next().unwrap();
+        let ext2 = extensions.next().unwrap();
+
+        // Check that we have both extensions
+        let tag1 = ext1.tag;
+        let tag2 = ext2.tag;
+        assert_eq!(tag1, ExtensionTag::SemverString);
+        assert_eq!(tag2, ExtensionTag::DescriptionString);
+    }
+
+    #[test]
+    fn test_add_extension_no_space() {
+        // Create a block with maximum payload to leave no space for extensions
+        let mut block = Block::new(0, 1, &[0xCC; MAX_PAYLOAD_SIZE], 0x08000000);
+
+        // Try to add an extension when there's no space left
+        let result = block.add_extension(ExtensionTag::SemverString, b"1.0.0");
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), BlockError::PayloadSize));
     }
 }
