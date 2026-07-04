@@ -48,6 +48,15 @@ impl From<BlockError> for ReaderError {
     }
 }
 
+impl core::error::Error for ReaderError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            ReaderError::BlockCorruption(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
 /// Check if the given buffer is valid UF2 data.
 ///
 /// Checks buffer size is a multiple of BLOCK_SIZE and first block is valid.
