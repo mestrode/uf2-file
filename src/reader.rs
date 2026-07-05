@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use crate::block::{Block, BlockError, BLOCK_SIZE, MAX_PAYLOAD_SIZE};
-use crate::uf2file::Uf2File;
+use crate::file::Uf2File;
 use zerocopy::FromBytes;
 
 /// Error type for UF2 reading operations.

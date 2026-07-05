@@ -11,7 +11,7 @@ use core::fmt;
 use crate::block::{
     Block, Flags, MAX_PAYLOAD_SIZE, MAX_PAYLOAD_SIZE_WITH_CHECKSUM,
 };
-use crate::uf2file::Uf2File;
+use crate::file::Uf2File;
 use crate::MAGIC_NUMBER;
 
 /// Error type for UF2 writing operations.
