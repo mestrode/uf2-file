@@ -76,9 +76,10 @@ impl Uf2File {
 
         for block in &self.blocks {
             if let Some(id) = family_id
-                && block.board_family_id() != Some(id) {
-                    continue;
-                }
+                && block.board_family_id() != Some(id)
+            {
+                continue;
+            }
             payload.extend_from_slice(block.data());
         }
         if payload.is_empty() {
@@ -97,9 +98,10 @@ impl Uf2File {
         let mut family_ids = Vec::new();
         for block in &self.blocks {
             if let Some(id) = block.board_family_id()
-                && !family_ids.contains(&id) {
-                    family_ids.push(id);
-                }
+                && !family_ids.contains(&id)
+            {
+                family_ids.push(id);
+            }
         }
         family_ids
     }

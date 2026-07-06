@@ -7,5 +7,5 @@ pub mod writer;
 
 pub use block::*;
 pub use file::Uf2File;
-pub use reader::{is_uf2_buffer, ReaderError};
+pub use reader::{ReaderError, is_uf2_buffer};
 pub use writer::WriterError;

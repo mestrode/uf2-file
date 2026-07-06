@@ -8,11 +8,11 @@ extern crate std;
 
 use core::fmt;
 
+use crate::MAGIC_NUMBER;
 use crate::block::{
     Block, Flags, MAX_PAYLOAD_SIZE, MAX_PAYLOAD_SIZE_WITH_CHECKSUM,
 };
 use crate::file::Uf2File;
-use crate::MAGIC_NUMBER;
 
 /// Error type for UF2 writing operations.
 #[derive(Debug, PartialEq, Eq)]
@@ -163,8 +163,8 @@ impl Uf2File {
         page_size: usize,
         semver: &str,
     ) -> Result<(), WriterError> {
-        use crate::block::{Checksum, Extension, ExtensionTag};
         use crate::ALIGN;
+        use crate::block::{Checksum, Extension, ExtensionTag};
         use std::cmp;
         use std::string::ToString;
         use zerocopy::IntoBytes;
