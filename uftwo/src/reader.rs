@@ -118,18 +118,16 @@ pub fn verify(uf2_file: &Uf2File) -> Result<(), ReaderError> {
         }
 
         // block id must be sequential, or reset to 0
-        if let Some(prev_index) = prev_index {
-            if index != prev_index + 1 && index != 0 {
+        if let Some(prev_index) = prev_index
+            && index != prev_index + 1 && index != 0 {
                 return Err(ReaderError::BlockOrderMismatch);
             }
-        }
 
         // total must be consistent, unless index is 0
-        if let Some(prev_total_blocks) = prev_total_blocks {
-            if total != prev_total_blocks && index != 0 {
+        if let Some(prev_total_blocks) = prev_total_blocks
+            && total != prev_total_blocks && index != 0 {
                 return Err(ReaderError::BlockOrderMismatch);
             }
-        }
 
         // verify data length
         if block.data().len() > MAX_PAYLOAD_SIZE {
