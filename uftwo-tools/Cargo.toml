@@ -1,0 +1,16 @@
+[package]
+name = "uftwo-tools"
+edition.workspace = true
+version.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+uftwo = { workspace = true, features = ["std"] }
+clap = { version = "4.5.4", features = ["derive"] }
+clap-num = "1.1.1"
+num = { version = "0.4.1", default-features = false }
+anyhow = "1.0.81"
+
+[[bin]]
+name = "uftwo"

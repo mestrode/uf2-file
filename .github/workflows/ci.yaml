@@ -31,7 +31,7 @@ jobs:
       - name: Report Clippy version
         run: cargo clippy -- --version
       - name: Run Clippy Lints
-        run: cargo clippy --all-features -- -D warnings
+        run: cargo clippy --workspace --all-features -- -D warnings
 
   docs:
     name: Docs
@@ -43,4 +43,4 @@ jobs:
       - name: Report cargo version
         run: cargo --version
       - name: Build documentation
-        run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps

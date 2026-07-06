@@ -7,7 +7,7 @@ use std::{
     io::{Read, Write},
     path::PathBuf,
 };
-use uftwo::{reader, Uf2File};
+use uftwo::{Uf2File, reader};
 
 #[derive(Parser)]
 pub struct Cmd {

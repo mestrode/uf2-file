@@ -1,0 +1,17 @@
+[package]
+name = "uftwo"
+description = "A library for working with the UF2 file format."
+version = "0.2.0"
+edition = "2021"
+license = "MPL-2.0"
+repository = "https://github.com/umi-eng/uftwo"
+
+[dependencies]
+bitflags = "2.5"
+defmt = { version = "1.0", optional = true }
+zerocopy = { version = "0.8", features = ["derive"] }
+md5 = { version = "0.8", optional = true }
+
+[features]
+defmt = ["dep:defmt"]
+std = ["dep:md5"]
