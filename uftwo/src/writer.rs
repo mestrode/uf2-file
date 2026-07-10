@@ -161,7 +161,7 @@ impl Uf2File {
         target_addr: u32,
         family_id: Option<u32>,
         page_size: usize,
-        semver: &str,
+        semver: Option<&str>,
     ) -> Result<(), WriterError> {
         use crate::ALIGN;
         use crate::block::{Checksum, Extension, ExtensionTag};
@@ -213,8 +213,11 @@ impl Uf2File {
                     let page_size_str = page_size.to_string();
                     let target_page_size_ext = Extension::HEADER_SIZE
                         + page_size_str.len().next_multiple_of(ALIGN);
-                    let semver_ext = Extension::HEADER_SIZE
-                        + semver.len().next_multiple_of(ALIGN);
+                    let semver_ext = match semver {
+                        Some(semver) => Extension::HEADER_SIZE
+                            + semver.len().next_multiple_of(ALIGN),
+                        None => 0,
+                    };
                     max_payload = max_payload
                         .saturating_sub(target_page_size_ext + semver_ext);
                 }
@@ -304,23 +307,25 @@ impl Uf2File {
                         block.flags |= Flags::ExtensionTags;
                     }
 
-                    // Add SemverString extension
-                    let semver_str = semver;
-                    let semver_ext_len =
-                        Extension::HEADER_SIZE + semver_str.len();
-                    let start = (chunk_size + target_page_size_ext_len)
-                        .next_multiple_of(ALIGN);
-                    let end = start + semver_ext_len;
-
-                    if end <= MAX_PAYLOAD_SIZE_WITH_CHECKSUM {
-                        block.data[start] = semver_ext_len as u8;
-                        let tag_bytes = ExtensionTag::SemverString.to_bytes();
-                        block.data[start + 1..start + 4]
-                            .copy_from_slice(&tag_bytes);
-                        block.data[start + Extension::HEADER_SIZE..end]
-                            .copy_from_slice(semver_str.as_bytes());
-
-                        block.flags |= Flags::ExtensionTags;
+                    if semver.is_some() {
+                        // Add SemverString extension
+                        let semver_str = semver.unwrap();
+                        let semver_ext_len =
+                            Extension::HEADER_SIZE + semver_str.len();
+                        let start = (chunk_size + target_page_size_ext_len)
+                            .next_multiple_of(ALIGN);
+                        let end = start + semver_ext_len;
+                        
+                        if end <= MAX_PAYLOAD_SIZE_WITH_CHECKSUM {
+                            block.data[start] = semver_ext_len as u8;
+                            let tag_bytes = ExtensionTag::SemverString.to_bytes();
+                            block.data[start + 1..start + 4]
+                                .copy_from_slice(&tag_bytes);
+                            block.data[start + Extension::HEADER_SIZE..end]
+                                .copy_from_slice(semver_str.as_bytes());
+                    
+                            block.flags |= Flags::ExtensionTags;
+                        }
                     }
                 }
 
@@ -459,7 +464,7 @@ mod tests {
             0x08000000,
             Some(0x12345678),
             256,
-            "1.0.0",
+            None,
         );
         assert!(result.is_ok());
         assert!(uf2_file.len() > 0);
@@ -476,7 +481,7 @@ mod tests {
             0x08000001,
             Some(0x12345678),
             256,
-            "1.0.0",
+            Some("1.0.0"),
         );
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), WriterError::AlignmentError));
@@ -492,7 +497,7 @@ mod tests {
             0x08000000,
             Some(0x12345678),
             256,
-            "1.0.0",
+            Some("1.0.0"),
         );
         assert!(result.is_ok());
 
@@ -511,7 +516,7 @@ mod tests {
             0x08000000,
             Some(0x12345678),
             256,
-            "1.0.0",
+            Some("1.0.0"),
         );
         assert!(result.is_ok());
 
@@ -607,7 +612,7 @@ mod tests {
             0x08000000,
             Some(0x12345678),
             256,
-            "1.0.0",
+            Some("1.0.0"),
         );
         assert!(result.is_ok());
 
