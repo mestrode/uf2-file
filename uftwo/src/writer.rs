@@ -309,9 +309,9 @@ impl Uf2File {
                         block.flags |= Flags::ExtensionTags;
                     }
 
-                    if semver.is_some() {
+                    if let Some(semver) = semver {
                         // Add SemverString extension
-                        let semver_str = semver.unwrap();
+                        let semver_str = semver;
                         let semver_ext_len =
                             Extension::HEADER_SIZE + semver_str.len();
                         let start = (chunk_size + target_page_size_ext_len)
