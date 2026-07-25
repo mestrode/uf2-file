@@ -2,6 +2,8 @@
 
 # [Unreleased]
 
+# v0.3.0
+
 - Moved into `block.rs` - Core UF2 block types (`Block`, `Checksum`, `Flags`, `Extensions`, `ExtensionTag`)
 - Fixed `Block::new()` was not setting the `data_len` field, causing `data()` method to return empty slices
 - Added `uf2file.rs` - UF2 file structure (`Uf2File`) and utilities
