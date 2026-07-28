@@ -24,6 +24,8 @@ pub enum ReaderError {
     BlockOrderMismatch,
     /// Address or payload size is not properly aligned.
     AlignmentError,
+    /// Blocks have overlapping address ranges.
+    AddressRangeOverlap,
 }
 
 impl fmt::Display for ReaderError {
@@ -38,6 +40,9 @@ impl fmt::Display for ReaderError {
                 write!(f, "UF2 Block index or order mismatch")
             }
             Self::AlignmentError => write!(f, "Alignment error"),
+            Self::AddressRangeOverlap => {
+                write!(f, "Overlapping address ranges")
+            }
         }
     }
 }
@@ -104,9 +109,12 @@ pub fn from_bytes(buf: &[u8]) -> Result<Uf2File, ReaderError> {
 /// # Errors
 /// - [`ReaderError::BlockOrderMismatch`] if the block order is incorrect.
 /// - [`ReaderError::BlockCorruption`] if any block is corrupted.
+/// - [`ReaderError::AddressRangeOverlap`] if blocks have overlapping address ranges.
 pub fn verify(uf2_file: &Uf2File) -> Result<(), ReaderError> {
     let mut prev_index = None;
     let mut prev_total_blocks = None;
+    let mut address_ranges: alloc::vec::Vec<(u32, u32)> =
+        alloc::vec::Vec::new();
 
     for block in uf2_file.blocks() {
         let index = block.block as usize;
@@ -138,8 +146,30 @@ pub fn verify(uf2_file: &Uf2File) -> Result<(), ReaderError> {
             return Err(ReaderError::BlockCorruption(BlockError::PayloadSize));
         }
 
+        // Collect address ranges for overlap detection
+        if block.data_len > 0 {
+            let start_addr = block.target_addr;
+            let end_addr = start_addr
+                .checked_add(block.data_len)
+                .ok_or(ReaderError::AlignmentError)?;
+            address_ranges.push((start_addr, end_addr));
+        }
+
         prev_index = Some(index);
         prev_total_blocks = Some(total);
+    }
+
+    // Check for overlapping address ranges
+    for i in 0..address_ranges.len() {
+        for j in (i + 1)..address_ranges.len() {
+            let (start1, end1) = address_ranges[i];
+            let (start2, end2) = address_ranges[j];
+
+            // Check if ranges overlap: [start1, end1) and [start2, end2)
+            if start1 < end2 && start2 < end1 {
+                return Err(ReaderError::AddressRangeOverlap);
+            }
+        }
     }
 
     Ok(())
@@ -289,11 +319,11 @@ mod tests {
     fn test_verify_valid() {
         let mut uf2_file = Uf2File::new();
 
-        // Add sequentially numbered blocks
-        let block1 = Block::new(0, 2, &[0xAA; 100], 0);
+        // Add sequentially numbered blocks with non-overlapping addresses
+        let block1 = Block::new(0, 2, &[0xAA; 100], 0x2000);
         uf2_file.push_block(block1);
 
-        let block2 = Block::new(1, 2, &[0xBB; 100], 0);
+        let block2 = Block::new(1, 2, &[0xBB; 100], 0x2000 + 100);
         uf2_file.push_block(block2);
 
         let result = verify(&uf2_file);
@@ -380,18 +410,54 @@ mod tests {
     fn test_verify_with_family_id() {
         let mut uf2_file = Uf2File::new();
 
-        let mut block1 = Block::new(0, 2, &[0xAA; 100], 0);
+        let mut block1 = Block::new(0, 2, &[0xAA; 100], 0x2000);
         block1.flags |= Flags::FamilyId;
         block1.board_family_id_or_file_size = 0x12345678;
         uf2_file.push_block(block1);
 
-        let mut block2 = Block::new(1, 2, &[0xBB; 100], 0);
+        let mut block2 = Block::new(1, 2, &[0xBB; 100], 0x2000 + 100);
         block2.flags |= Flags::FamilyId;
         block2.board_family_id_or_file_size = 0x12345678;
         uf2_file.push_block(block2);
 
         let result = verify(&uf2_file);
         assert!(result.is_ok()); // Family ID doesn't affect verification
+    }
+
+    #[test]
+    fn test_verify_address_range_overlap() {
+        let mut uf2_file = Uf2File::new();
+
+        // Add blocks with overlapping address ranges
+        let block1 = Block::new(0, 2, &[0xAA; 100], 0x2000);
+        uf2_file.push_block(block1);
+
+        // This block overlaps with the first: [0x2000, 0x2064) vs [0x2040, 0x20E4)
+        let block2 = Block::new(1, 2, &[0xBB; 100], 0x2040);
+        uf2_file.push_block(block2);
+
+        let result = verify(&uf2_file);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            ReaderError::AddressRangeOverlap
+        ));
+    }
+
+    #[test]
+    fn test_verify_address_range_adjacent() {
+        let mut uf2_file = Uf2File::new();
+
+        // Add blocks with adjacent (non-overlapping) address ranges
+        let block1 = Block::new(0, 2, &[0xAA; 100], 0x2000);
+        uf2_file.push_block(block1);
+
+        // This block is adjacent to the first: [0x2000, 0x2064) and [0x2064, 0x20C8)
+        let block2 = Block::new(1, 2, &[0xBB; 100], 0x2064);
+        uf2_file.push_block(block2);
+
+        let result = verify(&uf2_file);
+        assert!(result.is_ok()); // Adjacent ranges should be valid
     }
 
     #[test]
@@ -481,5 +547,29 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_verify_fixture_overlapping_ranges() {
+        let bytes =
+            std::fs::read("tests/fixtures/overlapping_ranges.uf2").unwrap();
+        let uf2_file = from_bytes(&bytes).unwrap();
+
+        let result = verify(&uf2_file);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            ReaderError::AddressRangeOverlap
+        ));
+    }
+
+    #[test]
+    fn test_verify_fixture_adjacent_ranges() {
+        let bytes =
+            std::fs::read("tests/fixtures/adjacent_ranges.uf2").unwrap();
+        let uf2_file = from_bytes(&bytes).unwrap();
+
+        let result = verify(&uf2_file);
+        assert!(result.is_ok());
     }
 }
