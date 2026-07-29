@@ -77,7 +77,7 @@ pub struct Block {
     ///
     /// When the MD5 checksum flag is set, the last 24 bytes hold the checksum
     /// as well as address start and length.
-    pub data: [u8; MAX_PAYLOAD_SIZE],
+    pub payload: [u8; MAX_PAYLOAD_SIZE],
     /// Final magic number.
     pub magic_end: u32,
 }
@@ -98,7 +98,7 @@ impl Default for Block {
             block: 0,
             total_blocks: 0,
             board_family_id_or_file_size: 0,
-            data: [0; MAX_PAYLOAD_SIZE],
+            payload: [0; MAX_PAYLOAD_SIZE],
             magic_end: MAGIC_NUMBER[2],
         }
     }
@@ -126,9 +126,9 @@ impl Block {
         this.target_addr = target_addr as u32;
 
         // copy over data
-        assert!(data.len() <= this.data.len());
+        assert!(data.len() <= this.payload.len());
         this.data_len = data.len() as u32;
-        this.data[0..data.len()].copy_from_slice(data);
+        this.payload[0..data.len()].copy_from_slice(data);
 
         this
     }
@@ -169,8 +169,8 @@ impl Block {
     /// Returns the checksum value only if the checksum flag is set.
     pub fn checksum(&self) -> Option<&Checksum> {
         if self.has_checksum() {
-            let len = self.data.len();
-            Checksum::ref_from_bytes(&self.data[len - CHECKSUM_SIZE..len]).ok()
+            let len = self.payload.len();
+            Checksum::ref_from_bytes(&self.payload[len - CHECKSUM_SIZE..len]).ok()
         } else {
             None
         }
@@ -178,10 +178,10 @@ impl Block {
 
     /// Set the checksum for this block.
     pub fn set_checksum(&mut self, checksum: Checksum) {
-        let begin = self.data.len() - size_of::<Checksum>();
-        let end = self.data.len();
+        let begin = self.payload.len() - size_of::<Checksum>();
+        let end = self.payload.len();
 
-        self.data[begin..end].copy_from_slice(checksum.as_bytes());
+        self.payload[begin..end].copy_from_slice(checksum.as_bytes());
 
         self.flags |= Flags::Checksum;
     }
@@ -196,8 +196,8 @@ impl Block {
         if self.has_extensions() {
             let start = self.data_len as usize;
             let start = start.next_multiple_of(Extensions::ALIGN);
-            let end = self.data.len();
-            Some(Extensions::from_bytes(&self.data[start..end]))
+            let end = self.payload.len();
+            Some(Extensions::from_bytes(&self.payload[start..end]))
         } else {
             None
         }
@@ -213,7 +213,7 @@ impl Block {
 
     /// Returns the payload data slice.
     pub fn data(&self) -> &[u8] {
-        &self.data[0..self.data_len as usize]
+        &self.payload[0..self.data_len as usize]
     }
 
     /// Returns the file size if the family ID flag is not set.
@@ -270,19 +270,19 @@ impl Block {
         let ext_end = ext_start + ext_len;
 
         // Check if there's enough space in the block's data array
-        if ext_end > self.data.len() {
+        if ext_end > self.payload.len() {
             return Err(BlockError::PayloadSize);
         }
 
         // Write extension length (1 byte)
-        self.data[ext_start] = ext_len as u8;
+        self.payload[ext_start] = ext_len as u8;
 
         // Write extension tag (3 bytes)
         let tag_bytes = tag.to_bytes();
-        self.data[ext_start + 1..ext_start + 4].copy_from_slice(&tag_bytes);
+        self.payload[ext_start + 1..ext_start + 4].copy_from_slice(&tag_bytes);
 
         // Write extension data
-        self.data[ext_start + Extensions::HEADER_SIZE..ext_end]
+        self.payload[ext_start + Extensions::HEADER_SIZE..ext_end]
             .copy_from_slice(data);
 
         // Set the extension flag
@@ -501,17 +501,17 @@ mod tests {
         };
 
         // Semver string
-        block.data[0..12].copy_from_slice(&[
+        block.payload[0..12].copy_from_slice(&[
             0x09, 0xbc, 0xc7, 0x9f, 0x30, 0x2e, 0x31, 0x2e, 0x32, 0x00, 0x00,
             0x00,
         ]);
         // Semver string
-        block.data[12..24].copy_from_slice(&[
+        block.payload[12..24].copy_from_slice(&[
             0x09, 0xbc, 0xc7, 0x9f, 0x30, 0x2e, 0x31, 0x2e, 0x32, 0x00, 0x00,
             0x00,
         ]);
         // Device description
-        block.data[24..44].copy_from_slice(&[
+        block.payload[24..44].copy_from_slice(&[
             0x14, 0x9d, 0x0d, 0x65, 0x41, 0x43, 0x4d, 0x45, 0x20, 0x54, 0x6f,
             0x61, 0x73, 0x74, 0x65, 0x72, 0x20, 0x6d, 0x6b, 0x33,
         ]);

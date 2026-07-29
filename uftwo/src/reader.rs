@@ -156,7 +156,7 @@ mod tests {
         // Create a valid UF2 block
         let mut block = Block::default();
         block.data_len = 256;
-        block.data[0..256].copy_from_slice(&[0xAA; 256]);
+        block.payload[0..256].copy_from_slice(&[0xAA; 256]);
 
         let bytes = block.as_bytes();
         let buffer = [bytes; 1]; // Single block
@@ -194,13 +194,13 @@ mod tests {
         block1.block = 0;
         block1.total_blocks = 2;
         block1.data_len = 100;
-        block1.data[0..100].copy_from_slice(&[0xAA; 100]);
+        block1.payload[0..100].copy_from_slice(&[0xAA; 100]);
 
         let mut block2 = Block::default();
         block2.block = 1;
         block2.total_blocks = 2;
         block2.data_len = 100;
-        block2.data[0..100].copy_from_slice(&[0xBB; 100]);
+        block2.payload[0..100].copy_from_slice(&[0xBB; 100]);
 
         let mut bytes = Vec::new();
         bytes.extend_from_slice(block1.as_bytes());
@@ -215,7 +215,7 @@ mod tests {
         block.block = 0;
         block.total_blocks = 1;
         block.data_len = 100;
-        block.data[0..100].copy_from_slice(&[0xCC; 100]);
+        block.payload[0..100].copy_from_slice(&[0xCC; 100]);
 
         let bytes = block.as_bytes();
         let uf2_file = from_bytes(&bytes).unwrap();
@@ -231,13 +231,13 @@ mod tests {
         block1.block = 0;
         block1.total_blocks = 2;
         block1.data_len = 100;
-        block1.data[0..100].copy_from_slice(&[0xAA; 100]);
+        block1.payload[0..100].copy_from_slice(&[0xAA; 100]);
 
         let mut block2 = Block::default();
         block2.block = 1;
         block2.total_blocks = 2;
         block2.data_len = 50;
-        block2.data[0..50].copy_from_slice(&[0xBB; 50]);
+        block2.payload[0..50].copy_from_slice(&[0xBB; 50]);
 
         let mut bytes = Vec::new();
         bytes.extend_from_slice(block1.as_bytes());
@@ -347,7 +347,7 @@ mod tests {
         block.block = 5;
         block.total_blocks = 3; // block=5 >= total=3
         block.data_len = 100;
-        block.data[0..100].copy_from_slice(&[0xAA; 100]);
+        block.payload[0..100].copy_from_slice(&[0xAA; 100]);
 
         uf2_file.push_block(block);
 

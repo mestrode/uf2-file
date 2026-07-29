@@ -88,12 +88,12 @@ impl Uf2File {
                 block: block_num as u32,
                 total_blocks: total_blocks as u32,
                 board_family_id_or_file_size: 0,
-                data: [0; MAX_PAYLOAD_SIZE],
+                payload: [0; MAX_PAYLOAD_SIZE],
                 magic_end: MAGIC_NUMBER[2],
             };
 
             // Copy data
-            block.data[0..chunk_size]
+            block.payload[0..chunk_size]
                 .copy_from_slice(&payload[offset..offset + chunk_size]);
 
             // Set family ID if provided
@@ -261,12 +261,12 @@ impl Uf2File {
                     block: block_no as u32,
                     total_blocks: u32::MAX, // Placeholder for total_blocks
                     board_family_id_or_file_size: 0,
-                    data: [0; MAX_PAYLOAD_SIZE],
+                    payload: [0; MAX_PAYLOAD_SIZE],
                     magic_end: MAGIC_NUMBER[2],
                 };
 
                 // Copy data
-                block.data[0..chunk_size].copy_from_slice(
+                block.payload[0..chunk_size].copy_from_slice(
                     &page[page_offset..page_offset + chunk_size],
                 );
 
@@ -286,7 +286,7 @@ impl Uf2File {
                 let checksum_bytes = checksum.as_bytes();
                 let end_index = MAX_PAYLOAD_SIZE;
                 let start_index = end_index - 24;
-                block.data[start_index..end_index]
+                block.payload[start_index..end_index]
                     .copy_from_slice(checksum_bytes);
 
                 // Add extensions to the first block of each page
@@ -299,11 +299,11 @@ impl Uf2File {
                     let end = start + target_page_size_ext_len;
 
                     if end <= MAX_PAYLOAD_SIZE_WITH_CHECKSUM {
-                        block.data[start] = target_page_size_ext_len as u8;
+                        block.payload[start] = target_page_size_ext_len as u8;
                         let tag_bytes = ExtensionTag::TargetPageSize.to_bytes();
-                        block.data[start + 1..start + 4]
+                        block.payload[start + 1..start + 4]
                             .copy_from_slice(&tag_bytes);
-                        block.data[start + Extension::HEADER_SIZE..end]
+                        block.payload[start + Extension::HEADER_SIZE..end]
                             .copy_from_slice(page_size_str.as_bytes());
 
                         block.flags |= Flags::ExtensionTags;
@@ -319,12 +319,12 @@ impl Uf2File {
                         let end = start + semver_ext_len;
 
                         if end <= MAX_PAYLOAD_SIZE_WITH_CHECKSUM {
-                            block.data[start] = semver_ext_len as u8;
+                            block.payload[start] = semver_ext_len as u8;
                             let tag_bytes =
                                 ExtensionTag::SemverString.to_bytes();
-                            block.data[start + 1..start + 4]
+                            block.payload[start + 1..start + 4]
                                 .copy_from_slice(&tag_bytes);
-                            block.data[start + Extension::HEADER_SIZE..end]
+                            block.payload[start + Extension::HEADER_SIZE..end]
                                 .copy_from_slice(semver_str.as_bytes());
 
                             block.flags |= Flags::ExtensionTags;
