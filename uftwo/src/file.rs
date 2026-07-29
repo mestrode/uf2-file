@@ -62,7 +62,7 @@ impl Uf2File {
         let mut offset = start_addr as usize;
         for block in &mut self.blocks {
             block.target_addr = offset as u32;
-            offset += block.data().len();
+            offset += block.data_len as usize;
         }
     }
 

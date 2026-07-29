@@ -134,7 +134,7 @@ pub fn verify(uf2_file: &Uf2File) -> Result<(), ReaderError> {
         }
 
         // verify data length
-        if block.data().len() > MAX_PAYLOAD_SIZE {
+        if block.data_len > MAX_PAYLOAD_SIZE as u32 {
             return Err(ReaderError::BlockCorruption(BlockError::PayloadSize));
         }
 
