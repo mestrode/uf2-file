@@ -170,7 +170,8 @@ impl Block {
     pub fn checksum(&self) -> Option<&Checksum> {
         if self.has_checksum() {
             let len = self.payload.len();
-            Checksum::ref_from_bytes(&self.payload[len - CHECKSUM_SIZE..len]).ok()
+            Checksum::ref_from_bytes(&self.payload[len - CHECKSUM_SIZE..len])
+                .ok()
         } else {
             None
         }
