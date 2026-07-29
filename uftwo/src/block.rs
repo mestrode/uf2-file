@@ -537,7 +537,7 @@ mod tests {
     fn example_file() {
         use std::io::prelude::*;
 
-        let mut f = std::fs::File::open("example.uf2").unwrap();
+        let mut f = std::fs::File::open("tests/example.uf2").unwrap();
         let mut buffer = [0; 512];
 
         f.read(&mut buffer).unwrap();
