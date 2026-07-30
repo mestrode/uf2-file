@@ -166,7 +166,6 @@ impl Uf2File {
         use crate::ALIGN;
         use crate::block::{Checksum, Extension, ExtensionTag};
         use std::cmp;
-        use std::string::ToString;
         use zerocopy::IntoBytes;
         // Validate that target_addr is 4-byte aligned
         if !target_addr.is_multiple_of(ALIGN as u32) {
@@ -210,9 +209,7 @@ impl Uf2File {
                 // For the first block in the page, reserve space for extensions
                 let has_extensions = page_offset == 0;
                 if has_extensions {
-                    let page_size_str = page_size.to_string();
-                    let target_page_size_ext = Extension::HEADER_SIZE
-                        + page_size_str.len().next_multiple_of(ALIGN);
+                    let target_page_size_ext = Extension::HEADER_SIZE + 4;
                     let semver_ext = match semver {
                         Some(semver) => {
                             Extension::HEADER_SIZE
@@ -292,9 +289,7 @@ impl Uf2File {
                 // Add extensions to the first block of each page
                 if page_offset == 0 {
                     // Add TargetPageSize extension
-                    let page_size_str = page_size.to_string();
-                    let target_page_size_ext_len =
-                        Extension::HEADER_SIZE + page_size_str.len();
+                    let target_page_size_ext_len = Extension::HEADER_SIZE + 4;
                     let start = chunk_size.next_multiple_of(ALIGN);
                     let end = start + target_page_size_ext_len;
 
@@ -304,7 +299,7 @@ impl Uf2File {
                         block.payload[start + 1..start + 4]
                             .copy_from_slice(&tag_bytes);
                         block.payload[start + Extension::HEADER_SIZE..end]
-                            .copy_from_slice(page_size_str.as_bytes());
+                            .copy_from_slice(&(page_size as u32).to_le_bytes());
 
                         block.flags |= Flags::ExtensionTags;
                     }
